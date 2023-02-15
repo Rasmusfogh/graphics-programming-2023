@@ -72,6 +72,7 @@ int Application::Run()
 
 void Application::Initialize()
 {
+
 }
 
 void Application::Update()

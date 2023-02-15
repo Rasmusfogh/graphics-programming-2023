@@ -1,6 +1,9 @@
 #pragma once
 
 #include <ituGL/application/Application.h>
+#include <ituGL/geometry/VertexArrayObject.h>
+#include <ituGL/geometry/VertexBufferObject.h>
+#include <ituGL/geometry/ElementBufferObject.h>
 
 // (todo) 01.1: Include the libraries you need
 
@@ -25,8 +28,10 @@ private:
     unsigned int m_shaderProgram;
 
     // (todo) 01.1: Declare an VBO, VAO
-
+    VertexArrayObject m_vao;
+    VertexBufferObject m_vbo;
 
     // (todo) 01.5: Declare an EBO
+    ElementBufferObject m_ebo;
 
 };

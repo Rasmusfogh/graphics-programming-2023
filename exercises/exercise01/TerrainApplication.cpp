@@ -4,6 +4,9 @@
 
 #include <cmath>
 #include <iostream>
+#include <vector>
+#include <array>
+#include <ituGL/geometry/VertexAttribute.h>
 
 // Helper structures. Declared here only for this exercise
 struct Vector2
@@ -42,8 +45,59 @@ void TerrainApplication::Initialize()
     // Build shaders and store in m_shaderProgram
     BuildShaders();
 
-    // (todo) 01.1: Create containers for the vertex position
+    Vector2 scale(1.0f / m_gridX, 1.0f / m_gridY);
 
+    // (todo) 01.1: Create containers for the vertex position
+    std::vector<Vector3> v_position;
+    std::vector<Vector2> v_text_coord;
+    std::vector<unsigned int> indices;
+
+    for (int i = 0; i < m_gridX; i++)
+    {
+        for (int j = 0; j < m_gridY; j++)
+        {            
+            //Left triangle
+            v_position.push_back(Vector3((scale.x * i) - 0.5, (scale.y * j) - 0.5, 1));
+            v_position.push_back(Vector3((scale.x * (i + 1)) - 0.5, (scale.y * j) - 0.5, 1));
+            v_position.push_back(Vector3((scale.x * i) - 0.5, (scale.y * (j + 1)) - 0.5, 1));
+
+            //Right triangle
+            v_position.push_back(Vector3((scale.x * (i + 1)) - 0.5, (scale.y * (j + 1)) - 0.5, 1));
+            v_position.push_back(Vector3((scale.x * (i + 1)) - 0.5, (scale.y * j) - 0.5, 1));
+            v_position.push_back(Vector3((scale.x * i) - 0.5, (scale.y * (j + 1)) - 0.5, 1));
+
+
+            v_text_coord.push_back(Vector2(0, 0));
+            v_text_coord.push_back(Vector2(1, 0));
+            v_text_coord.push_back(Vector2(0, 1));
+            v_text_coord.push_back(Vector2(1, 1));
+            v_text_coord.push_back(Vector2(1, 0));
+            v_text_coord.push_back(Vector2(0, 1));
+        } 
+    }
+
+    m_vao.Bind();
+    m_vbo.Bind();
+    m_ebo.Bind();
+
+    VertexAttribute position(Data::Type::Float, 3);
+    VertexAttribute texture(Data::Type::Float, 2);
+
+    size_t data_size = v_position.size() * position.GetSize() +
+                       v_text_coord.size() * texture.GetSize();
+
+    size_t v_position_offset = v_position.size() * position.GetSize();
+
+    m_vbo.AllocateData(data_size);
+    
+    m_vbo.UpdateData(std::span(v_position));
+    m_vbo.UpdateData(std::span(v_text_coord), v_position_offset);
+
+    m_vao.SetAttribute(0, position, 0);
+    m_vao.SetAttribute(1, texture, v_position_offset);
+
+    // uncomment this call to draw in wireframe polygons.
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // (todo) 01.1: Fill in vertex data
 
@@ -55,9 +109,12 @@ void TerrainApplication::Initialize()
 
 
     // (todo) 01.1: Unbind VAO, and VBO
+    m_vbo.Unbind();
+    m_vao.Unbind();
 
 
     // (todo) 01.5: Unbind EBO
+    m_ebo.Unbind();
 
 }
 
@@ -78,8 +135,10 @@ void TerrainApplication::Render()
     // Set shader to be used
     glUseProgram(m_shaderProgram);
 
-    // (todo) 01.1: Draw the grid
+    m_vao.Bind();
 
+    // (todo) 01.1: Draw the grid
+    glDrawArrays(GL_TRIANGLES, 0, m_gridX * m_gridY * 6);
 }
 
 void TerrainApplication::Cleanup()
