@@ -45,7 +45,7 @@ struct Vertex
 
 
 TerrainApplication::TerrainApplication()
-    : Application(1024, 1024, "Terrain demo"), m_gridX(50), m_gridY(50), m_shaderProgram(0)
+    : Application(1024, 1024, "Terrain demo"), m_gridX(256), m_gridY(256), m_shaderProgram(0)
 {
 }
 
