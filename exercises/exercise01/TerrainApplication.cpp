@@ -34,11 +34,10 @@ struct Vector3
 
 struct Vertex
 {
-    Vertex(Vector3 position, Vector2 texture_coordinates, Vector3 color) 
-        : position(position), texture_coordinates(texture_coordinates), color(color) {}
-
+    Vector3 position;
     Vector2 texture_coordinates;
-    Vector3 position, color;
+    Vector3 color;
+    Vector3 normal;
 };
 
 // (todo) 01.8: Declare an struct with the vertex format
@@ -50,41 +49,43 @@ TerrainApplication::TerrainApplication()
 {
 }
 
+Vector3 GetColorByHeight(float z)
+{
+    if (z > 0.3f)
+       return Vector3(1.0f, 1.0f, 1.0f);
+    else if (z > 0.1f)
+        return Vector3(0.3, 0.3f, 0.35f);
+    else if (z > -0.05f)
+        return Vector3(0.1, 0.4f, 0.15f);
+    else if (z > -0.1f)
+       return Vector3(0.6, 0.5f, 0.4f);
+    else
+        return Vector3(0.1f, 0.1f, 0.3f);
+}
+
 void TerrainApplication::Initialize()
 {
     Application::Initialize();
 
-    // Build shaders and store in m_shaderProgram
     BuildShaders();
 
     Vector2 scale(1.0f / m_gridX, 1.0f / m_gridY);
 
-    // (todo) 01.1: Create containers for the vertex position
-    std::vector<Vector3> v_position;
-    std::vector<Vector2> v_text_coord;
-    std::vector<Vector3> v_color;
+    std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
 
     for (int i = 0; i <= m_gridX; i++)
     {
         for (int j = 0; j <= m_gridY; j++)
         {  
-            float z_val = stb_perlin_fbm_noise3((scale.x * i - 0.5f) * 2, (scale.y * j - 0.5f) * 2, 0.0f, 1.9f, 0.5f, 8) * 0.5f;
-            v_position.push_back(Vector3(scale.x * i - 0.5 , scale.y * j - 0.5, z_val));
-            v_text_coord.push_back(Vector2(i, j));
+            Vertex& v = vertices.emplace_back();
+            float x = scale.x * i - 0.5f;
+            float y = scale.y * j - 0.5f;
+            float z = stb_perlin_fbm_noise3(x * 2, y * 2, 0.0f, 1.9f, 0.5f, 8) * 0.5f;
 
-
-            if (z_val > 0.3f)
-                v_color.push_back(Vector3(1.0f, 1.0f, 1.0f));
-            else if (z_val > 0.1f)
-                v_color.push_back(Vector3(0.3, 0.3f, 0.35f));
-            else if (z_val > -0.05f)
-                v_color.push_back(Vector3(0.1, 0.4f, 0.15f));
-            else if (z_val > -0.1f)
-                v_color.push_back(Vector3(0.6, 0.5f, 0.4f));
-            else
-                v_color.push_back(Vector3(0.1f, 0.1f, 0.3f));
-
+            v.position = Vector3(x, y, z);
+            v.texture_coordinates = Vector2(i, j);
+            v.color = GetColorByHeight(z);    
 
             if (i < m_gridX && j < m_gridY) {
                 int bottom_left = i * (m_gridY + 1) + j;
@@ -103,6 +104,25 @@ void TerrainApplication::Initialize()
         } 
     }
 
+    for (int i = 0; i <= m_gridX; i++)
+    {
+        for (int j = 0; j <= m_gridY; j++)
+        {
+            int index = i * (m_gridY + 1) + j;
+
+            Vertex& v = vertices[index];
+            Vertex& v_l = i == 0 ? v : vertices[index - m_gridY];
+            Vertex& v_r = i == m_gridX ? v : vertices[index + m_gridY];
+            Vertex& v_u = j == m_gridY ? v : vertices[index + 1];
+            Vertex& v_d = j == 0 ? v : vertices[index - 1];
+
+            float delta_x = (v_r.position.z - v_l.position.z) / (v_r.position.x - v_l.position.x);
+            float delta_y = (v_u.position.z - v_d.position.z) / (v_u.position.y - v_d.position.y);
+
+            v.normal = Vector3(delta_x, delta_y, 1.0f).Normalize();
+        }
+    }
+
     m_vao.Bind();
     m_vbo.Bind();
     m_ebo.Bind();
@@ -110,43 +130,27 @@ void TerrainApplication::Initialize()
     VertexAttribute position(Data::Type::Float, 3);
     VertexAttribute texture(Data::Type::Float, 2);
     VertexAttribute color(Data::Type::Float, 3);
-
-    size_t data_size = v_position.size() * position.GetSize() +
-                       v_text_coord.size() * texture.GetSize() +
-                       v_color.size() * color.GetSize();
-
-    size_t v_position_offset = v_position.size() * position.GetSize();
-    size_t v_text_coord_offset = v_position_offset + v_text_coord.size() * texture.GetSize();
+    VertexAttribute normal(Data::Type::Float, 3);
 
     m_ebo.AllocateData(std::span(indices));
-    m_vbo.AllocateData(data_size);
-    
-    m_vbo.UpdateData(std::span(v_position));
-    m_vbo.UpdateData(std::span(v_text_coord), v_position_offset);
-    m_vbo.UpdateData(std::span(v_color), v_text_coord_offset);
+    m_vbo.AllocateData(std::span(vertices));
 
-    m_vao.SetAttribute(0, position, 0);
-    m_vao.SetAttribute(1, texture, v_position_offset);
-    m_vao.SetAttribute(2, color, v_text_coord_offset);
+    GLsizei stride = sizeof(Vertex);
+
+    size_t position_offset = position.GetSize();
+    size_t texture_offset = position_offset + texture.GetSize();
+    size_t color_offset = texture_offset + color.GetSize();
+
+    m_vao.SetAttribute(0, position, 0, stride);
+    m_vao.SetAttribute(1, texture, position_offset, stride);
+    m_vao.SetAttribute(2, color, texture_offset, stride);
+    m_vao.SetAttribute(3, normal, color_offset, stride);
 
     // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    // (todo) 01.1: Fill in vertex data
-
-
-    // (todo) 01.1: Initialize VAO, and VBO
-
-
-    // (todo) 01.5: Initialize EBO
-
-
-    // (todo) 01.1: Unbind VAO, and VBO
     m_vbo.Unbind();
     m_vao.Unbind();
-
-
-    // (todo) 01.5: Unbind EBO
     m_ebo.Unbind();
 
 }
