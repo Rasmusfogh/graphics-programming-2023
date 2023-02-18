@@ -2,6 +2,9 @@
 
 // (todo) 01.1: Include the libraries you need
 
+#define STB_PERLIN_IMPLEMENTATION
+#include <stb_perlin.h>
+
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -29,12 +32,21 @@ struct Vector3
     }
 };
 
+struct Vertex
+{
+    Vertex(Vector3 position, Vector2 texture_coordinates, Vector3 color) 
+        : position(position), texture_coordinates(texture_coordinates), color(color) {}
+
+    Vector2 texture_coordinates;
+    Vector3 position, color;
+};
+
 // (todo) 01.8: Declare an struct with the vertex format
 
 
 
 TerrainApplication::TerrainApplication()
-    : Application(1024, 1024, "Terrain demo"), m_gridX(16), m_gridY(16), m_shaderProgram(0)
+    : Application(1024, 1024, "Terrain demo"), m_gridX(50), m_gridY(50), m_shaderProgram(0)
 {
 }
 
@@ -50,29 +62,44 @@ void TerrainApplication::Initialize()
     // (todo) 01.1: Create containers for the vertex position
     std::vector<Vector3> v_position;
     std::vector<Vector2> v_text_coord;
+    std::vector<Vector3> v_color;
     std::vector<unsigned int> indices;
 
-    for (int i = 0; i < m_gridX; i++)
+    for (int i = 0; i <= m_gridX; i++)
     {
-        for (int j = 0; j < m_gridY; j++)
-        {            
-            //Left triangle
-            v_position.push_back(Vector3((scale.x * i) - 0.5, (scale.y * j) - 0.5, 1));
-            v_position.push_back(Vector3((scale.x * (i + 1)) - 0.5, (scale.y * j) - 0.5, 1));
-            v_position.push_back(Vector3((scale.x * i) - 0.5, (scale.y * (j + 1)) - 0.5, 1));
-
-            //Right triangle
-            v_position.push_back(Vector3((scale.x * (i + 1)) - 0.5, (scale.y * (j + 1)) - 0.5, 1));
-            v_position.push_back(Vector3((scale.x * (i + 1)) - 0.5, (scale.y * j) - 0.5, 1));
-            v_position.push_back(Vector3((scale.x * i) - 0.5, (scale.y * (j + 1)) - 0.5, 1));
+        for (int j = 0; j <= m_gridY; j++)
+        {  
+            float z_val = stb_perlin_fbm_noise3((scale.x * i - 0.5f) * 2, (scale.y * j - 0.5f) * 2, 0.0f, 1.9f, 0.5f, 8) * 0.5f;
+            v_position.push_back(Vector3(scale.x * i - 0.5 , scale.y * j - 0.5, z_val));
+            v_text_coord.push_back(Vector2(i, j));
 
 
-            v_text_coord.push_back(Vector2(0, 0));
-            v_text_coord.push_back(Vector2(1, 0));
-            v_text_coord.push_back(Vector2(0, 1));
-            v_text_coord.push_back(Vector2(1, 1));
-            v_text_coord.push_back(Vector2(1, 0));
-            v_text_coord.push_back(Vector2(0, 1));
+            if (z_val > 0.3f)
+                v_color.push_back(Vector3(1.0f, 1.0f, 1.0f));
+            else if (z_val > 0.1f)
+                v_color.push_back(Vector3(0.3, 0.3f, 0.35f));
+            else if (z_val > -0.05f)
+                v_color.push_back(Vector3(0.1, 0.4f, 0.15f));
+            else if (z_val > -0.1f)
+                v_color.push_back(Vector3(0.6, 0.5f, 0.4f));
+            else
+                v_color.push_back(Vector3(0.1f, 0.1f, 0.3f));
+
+
+            if (i < m_gridX && j < m_gridY) {
+                int bottom_left = i * (m_gridY + 1) + j;
+                int top_left = bottom_left + 1;
+                int bottom_right = top_left + m_gridY;
+                int top_right = bottom_right + 1;
+
+                indices.push_back(bottom_left);
+                indices.push_back(top_left);
+                indices.push_back(bottom_right);
+
+                indices.push_back(top_left);
+                indices.push_back(bottom_right);
+                indices.push_back(top_right);
+            }
         } 
     }
 
@@ -82,19 +109,25 @@ void TerrainApplication::Initialize()
 
     VertexAttribute position(Data::Type::Float, 3);
     VertexAttribute texture(Data::Type::Float, 2);
+    VertexAttribute color(Data::Type::Float, 3);
 
     size_t data_size = v_position.size() * position.GetSize() +
-                       v_text_coord.size() * texture.GetSize();
+                       v_text_coord.size() * texture.GetSize() +
+                       v_color.size() * color.GetSize();
 
     size_t v_position_offset = v_position.size() * position.GetSize();
+    size_t v_text_coord_offset = v_position_offset + v_text_coord.size() * texture.GetSize();
 
+    m_ebo.AllocateData(std::span(indices));
     m_vbo.AllocateData(data_size);
     
     m_vbo.UpdateData(std::span(v_position));
     m_vbo.UpdateData(std::span(v_text_coord), v_position_offset);
+    m_vbo.UpdateData(std::span(v_color), v_text_coord_offset);
 
     m_vao.SetAttribute(0, position, 0);
     m_vao.SetAttribute(1, texture, v_position_offset);
+    m_vao.SetAttribute(2, color, v_text_coord_offset);
 
     // uncomment this call to draw in wireframe polygons.
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -133,12 +166,15 @@ void TerrainApplication::Render()
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
 
     // Set shader to be used
+    glEnable(GL_DEPTH_TEST);
+
     glUseProgram(m_shaderProgram);
 
     m_vao.Bind();
 
     // (todo) 01.1: Draw the grid
-    glDrawArrays(GL_TRIANGLES, 0, m_gridX * m_gridY * 6);
+    //glDrawArrays(GL_TRIANGLES, 0, (m_gridX + 1) * (m_gridY + 1));
+    glDrawElements(GL_TRIANGLES, 2 * 3 * m_gridX * m_gridY, GL_UNSIGNED_INT, 0);
 }
 
 void TerrainApplication::Cleanup()
