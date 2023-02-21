@@ -12,14 +12,24 @@
 struct Particle
 {
     glm::vec2 position;
+    float size;
+    float birth;
+    float duration;
+    Color color;
+    glm::vec2 velocity;
     // (todo) 02.X: Add more vertex attributes
- 
+
 };
 
 // List of attributes of the particle. Must match the structure above
-const std::array<VertexAttribute, 1> s_vertexAttributes =
+const std::array<VertexAttribute, 6> s_vertexAttributes =
 {
     VertexAttribute(Data::Type::Float, 2), // position
+    VertexAttribute(Data::Type::Float, 1), // size
+    VertexAttribute(Data::Type::Float, 1), // birth
+    VertexAttribute(Data::Type::Float, 1), // duration
+    VertexAttribute(Data::Type::Float, 4), // color
+    VertexAttribute(Data::Type::Float, 2), // velocity
     // (todo) 02.X: Add more vertex attributes
 
 };
@@ -42,13 +52,19 @@ void ParticlesApplication::Initialize()
     m_mousePosition = GetMainWindow().GetMousePosition(true);
 
     // (todo) 02.2: Enable the GL_PROGRAM_POINT_SIZE feature on the device
+    GetDevice().EnableFeature(GL_PROGRAM_POINT_SIZE);
 
 
     // (todo) 02.3: Enable the GL_BLEND feature on the device
+    GetDevice().EnableFeature(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
 
     // We need to enable V-sync, otherwise the framerate would be too high and spawn multiple particles in one click
     GetDevice().SetVSyncEnabled(true);
+
+    m_currentTimeUniform = m_shaderProgram.GetUniformLocation("CurrentTime");
+    m_gravityUniform = m_shaderProgram.GetUniformLocation("Gravity");
 }
 
 void ParticlesApplication::Update()
@@ -65,8 +81,11 @@ void ParticlesApplication::Update()
     {
         // (todo) 02.X: Compute new particle attributes here
 
+        float size = RandomRange(10.0f, 40.0f);
+        float duration = RandomRange(1.0f, 2.0f);
+        Color color = RandomColor();
 
-        EmitParticle(mousePosition);
+        EmitParticle(mousePosition, size, duration, color);
     }
 
     // save the mouse position (to compare next frame and obtain velocity)
@@ -82,6 +101,8 @@ void ParticlesApplication::Render()
     m_shaderProgram.Use();
 
     // (todo) 02.4: Set CurrentTime uniform
+    m_shaderProgram.SetUniform(m_currentTimeUniform, GetCurrentTime());
+    m_shaderProgram.SetUniform(m_gravityUniform, -9.8f);
 
 
     // (todo) 02.6: Set Gravity uniform
@@ -142,13 +163,18 @@ void ParticlesApplication::InitializeShaders()
     }
 }
 
-void ParticlesApplication::EmitParticle(const glm::vec2& position)
+void ParticlesApplication::EmitParticle(const glm::vec2& position, const float size, 
+    const float duration, Color& color)
 {
     // Initialize the particle
     Particle particle;
     particle.position = position;
     // (todo) 02.X: Set the value for other attributes of the particle
-
+    particle.size = size;
+    particle.birth = GetCurrentTime();
+    particle.duration = duration;
+    particle.color = color;
+    particle.velocity = 0.2f * glm::vec2((position - m_mousePosition) / GetDeltaTime());
 
     // Get the index in the circular buffer
     unsigned int particleIndex = m_particleCount % m_particleCapacity;
