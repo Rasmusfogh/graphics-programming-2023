@@ -31,7 +31,7 @@ private:
     void CreateGearMesh(Mesh& mesh, unsigned int cogCount, float innerRadius, float pitchRadius, float addendum, float cogRatio, float depth);
 
     // Draw a gear mesh with a specific world matrix and color
-    void DrawGear(const Mesh& mesh, const glm::mat4& worldMatrix, const Color& color);
+    void DrawGear(const Mesh& mesh, const glm::mat4& worldMatrix, const Color& color, const glm::mat4& transformation);
 
     // Helper function to encapsulate loading and compiling a shader
     void LoadAndCompileShader(Shader& shader, const char* path);
@@ -50,11 +50,13 @@ private:
     ShaderProgram::Location m_colorUniform;
 
     // (todo) 03.1: Add the world matrix uniform
-
+    ShaderProgram::Location m_worldMatrixUniform;
+    ShaderProgram::Location m_rotationMatrixUniform;
 
     // (todo) 03.5: Add the viewProj matrix uniform
-
+    ShaderProgram::Location m_viewProjUniform;
 
     // (todo) 03.4: Add the camera
+    Camera m_camera;
 
 };

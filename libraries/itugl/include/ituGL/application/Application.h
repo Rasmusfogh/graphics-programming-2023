@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ituGL/camera/Camera.h>
 #include <ituGL/core/DeviceGL.h>
 #include <ituGL/application/Window.h>
 #include <string>
