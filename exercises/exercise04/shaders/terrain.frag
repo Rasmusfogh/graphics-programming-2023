@@ -26,15 +26,19 @@ float inverseMix(vec2 range, float value)
 
 void main()
 {
-	vec4 color0 = texture(ColorTexture0, TexCoord * ColorTextureScale);
-	vec4 color1 = texture(ColorTexture1, TexCoord * ColorTextureScale);
-	vec4 color2 = texture(ColorTexture2, TexCoord * ColorTextureScale);
-	vec4 color3 = texture(ColorTexture3, TexCoord * ColorTextureScale);
+//	vec4 color0 = texture(ColorTexture0, TexCoord * ColorTextureScale);
+//	vec4 color1 = texture(ColorTexture1, TexCoord * ColorTextureScale);
+//	vec4 color2 = texture(ColorTexture2, TexCoord * ColorTextureScale);
+//	vec4 color3 = texture(ColorTexture3, TexCoord * ColorTextureScale);
+//
+//	vec4 color = color0;
+//	color = mix(color, color1, inverseMix(ColorTexture01Range, Height));
+//	color = mix(color, color2, inverseMix(ColorTexture12Range, Height));
+//	color = mix(color, color3, inverseMix(ColorTexture23Range, Height));
+//
+//	//FragColor = Color * color;
+//	FragColor = vec4(1.0f);
 
-	vec4 color = color0;
-	color = mix(color, color1, inverseMix(ColorTexture01Range, Height));
-	color = mix(color, color2, inverseMix(ColorTexture12Range, Height));
-	color = mix(color, color3, inverseMix(ColorTexture23Range, Height));
-
-	FragColor = Color * color;
+	vec4 color = texture(ColorTexture0, TexCoord * ColorTextureScale);
+	FragColor = color;
 }

@@ -40,7 +40,7 @@ void TexturedTerrainApplication::Initialize()
     GetDevice().EnableFeature(GL_DEPTH_TEST);
 
     //Enable wireframe
-    GetDevice().SetWireframeEnabled(true);
+    //GetDevice().SetWireframeEnabled(true);
 }
 
 void TexturedTerrainApplication::Update()
@@ -65,11 +65,15 @@ void TexturedTerrainApplication::Render()
     // Clear color and depth
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
 
+
     // Terrain patches
-    DrawObject(m_terrainPatch, *m_defaultMaterial, glm::scale(glm::vec3(10.0f)));
+    DrawObject(m_terrainPatch, *m_terrainMaterial, glm::scale(glm::vec3(10.0f)));
 
     // (todo) 04.2: Add more patches here
-    
+    DrawObject(m_terrainPatch, *m_terrainMaterial2, glm::scale(glm::vec3(10.0f)) * glm::translate(glm::vec3(-1.0f, 0.0f, 0.0f)));
+    DrawObject(m_terrainPatch, *m_terrainMaterial3, glm::scale(glm::vec3(10.0f)) * glm::translate(glm::vec3(-1.0f, 0.0f, -1.0f)));
+    DrawObject(m_terrainPatch, *m_terrainMaterial4, glm::scale(glm::vec3(10.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, -1.0f)));
+
 
     // Water patches
     // (todo) 04.5: Add water planes
@@ -100,8 +104,34 @@ void TexturedTerrainApplication::InitializeMaterials()
     m_defaultMaterial->SetUniformValue("Color", glm::vec4(1.0f));
 
     // (todo) 04.1: Add terrain shader and material here
+    Shader terrainVS = m_vertexShaderLoader.Load("shaders/terrain.vert");
+    Shader terrainFS = m_fragmentShaderLoader.Load("shaders/terrain.frag");
+    std::shared_ptr<ShaderProgram> terrainShaderProgram = std::make_shared<ShaderProgram>();
+    terrainShaderProgram->Build(terrainVS, terrainFS);
 
+    std::shared_ptr<Texture2DObject> defaultTexture = CreateDefaultTexture();
 
+    std::shared_ptr<Texture2DObject> grassTexture = LoadTexture("C:\\Users\\Rasmu/Documents\\my-graphics-programming-2023\\exercises\\exercise04\\textures\\grass.jpg");
+
+    m_terrainMaterial = std::make_shared<Material>(terrainShaderProgram);
+    m_terrainMaterial2 = std::make_shared<Material>(terrainShaderProgram);
+    m_terrainMaterial3 = std::make_shared<Material>(terrainShaderProgram);
+    m_terrainMaterial4 = std::make_shared<Material>(terrainShaderProgram);
+
+    m_terrainMaterial->SetUniformValue("ColorTexture0", grassTexture);
+    m_terrainMaterial2->SetUniformValue("ColorTexture0", grassTexture);
+    m_terrainMaterial3->SetUniformValue("ColorTexture0", grassTexture);
+    m_terrainMaterial4->SetUniformValue("ColorTexture0", grassTexture);
+
+    m_terrainMaterial->SetUniformValue("ColorTextureScale", glm::vec2(0.04f));
+    m_terrainMaterial2->SetUniformValue("ColorTextureScale", glm::vec2(0.04f));
+    m_terrainMaterial3->SetUniformValue("ColorTextureScale", glm::vec2(0.04f));
+    m_terrainMaterial4->SetUniformValue("ColorTextureScale", glm::vec2(0.04f));
+
+    m_terrainMaterial->SetUniformValue("Heightmap", CreateHeightMap(m_gridX, m_gridY, glm::ivec2(0,0)));
+    m_terrainMaterial2->SetUniformValue("Heightmap", CreateHeightMap(m_gridX, m_gridY, glm::ivec2(-1, 0)));
+    m_terrainMaterial3->SetUniformValue("Heightmap", CreateHeightMap(m_gridX, m_gridY, glm::ivec2(-1, -1)));
+    m_terrainMaterial4->SetUniformValue("Heightmap", CreateHeightMap(m_gridX, m_gridY, glm::ivec2(0,-1)));
 
     // (todo) 04.5: Add water shader and material here
 
@@ -148,16 +178,16 @@ std::shared_ptr<Texture2DObject> TexturedTerrainApplication::LoadTexture(const c
     
     
     // (todo) 04.3: Load the texture data here
-    unsigned char* data = nullptr;
+    unsigned char* data = stbi_load(path, &width, &height, &components, 4);
 
     texture->Bind();
     texture->SetImage(0, width, height, TextureObject::FormatRGBA, TextureObject::InternalFormatRGBA, std::span<const unsigned char>(data, width * height * 4));
 
     // (todo) 04.3: Generate mipmaps
-
+    texture->GenerateMipmap();
 
     // (todo) 04.3: Release texture data
-
+    stbi_image_free(data);
 
     return texture;
 }
@@ -167,11 +197,15 @@ std::shared_ptr<Texture2DObject> TexturedTerrainApplication::CreateHeightMap(uns
     std::shared_ptr<Texture2DObject> heightmap = std::make_shared<Texture2DObject>();
 
     std::vector<float> pixels;
+
     for (unsigned int j = 0; j < height; ++j)
     {
         for (unsigned int i = 0; i < width; ++i)
         {
-            // (todo) 04.1: Add pixel data
+            //pixels.push_back(std::sin(0.1f * i) * 0.1f);
+            float z = stb_perlin_fbm_noise3((float)i / (width - 1) + coords.x, j / ((float)height - 1) + coords.y, 0.0f, 1.9f, 0.5f, 8) * 0.5f;
+
+            pixels.push_back(z);
         }
     }
 
