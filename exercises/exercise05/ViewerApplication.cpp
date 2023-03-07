@@ -7,6 +7,7 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/transform.hpp>
 #include <imgui.h>
+#include <format>
 
 ViewerApplication::ViewerApplication()
     : Application(1024, 1024, "Viewer demo")
@@ -47,10 +48,13 @@ void ViewerApplication::Render()
 {
     Application::Render();
 
+
     // Clear color and depth
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
 
     m_model.Draw();
+    RenderGUI();
+
 }
 
 void ViewerApplication::Cleanup()
@@ -64,8 +68,8 @@ void ViewerApplication::Cleanup()
 void ViewerApplication::InitializeModel()
 {
     // Load and build shader
-    Shader vertexShader = ShaderLoader::Load(Shader::VertexShader, "shaders/unlit.vert");
-    Shader fragmentShader = ShaderLoader::Load(Shader::FragmentShader, "shaders/unlit.frag");
+    Shader vertexShader = ShaderLoader::Load(Shader::VertexShader, "C:/Users/Rasmu/Documents/2023-Graphics-Programming-2/exercises/exercise05/blinn-phong.vert");
+    Shader fragmentShader = ShaderLoader::Load(Shader::FragmentShader, "C:/Users/Rasmu/Documents/2023-Graphics-Programming-2/exercises/exercise05/blinn-phong.frag");
     std::shared_ptr<ShaderProgram> shaderProgram = std::make_shared<ShaderProgram>();
     shaderProgram->Build(vertexShader, fragmentShader);
 
@@ -73,19 +77,38 @@ void ViewerApplication::InitializeModel()
     ShaderUniformCollection::NameSet filteredUniforms;
     filteredUniforms.insert("WorldMatrix");
     filteredUniforms.insert("ViewProjMatrix");
+    filteredUniforms.insert("AmbientColor");
+    filteredUniforms.insert("LightColor");
+    filteredUniforms.insert("LightPosition");
+    filteredUniforms.insert("CameraPosition");
 
     // Create reference material
     std::shared_ptr<Material> material = std::make_shared<Material>(shaderProgram, filteredUniforms);
     material->SetUniformValue("Color", glm::vec4(1.0f));
+    material->SetUniformValue("AmbientReflection", 1.0f);
+    material->SetUniformValue("DiffuseReflection", 1.0f);
+    material->SetUniformValue("SpecularReflection", 1.0f);
+
 
     // Setup function
     ShaderProgram::Location worldMatrixLocation = shaderProgram->GetUniformLocation("WorldMatrix");
     ShaderProgram::Location viewProjMatrixLocation = shaderProgram->GetUniformLocation("ViewProjMatrix");
+    ShaderProgram::Location ambientColorLocation = shaderProgram->GetUniformLocation("AmbientColor");
+    ShaderProgram::Location lightColorLocation = shaderProgram->GetUniformLocation("LightColor");
+    ShaderProgram::Location lightPositionLocation = shaderProgram->GetUniformLocation("LightPosition");
+    ShaderProgram::Location cameraPositionLocation = shaderProgram->GetUniformLocation("CameraPosition");
+    ShaderProgram::Location specularExponentLocation = shaderProgram->GetUniformLocation("SpecularExponent");
+
+
     material->SetShaderSetupFunction([=](ShaderProgram& shaderProgram)
         {
             shaderProgram.SetUniform(worldMatrixLocation, glm::scale(glm::vec3(0.1f)));
             shaderProgram.SetUniform(viewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
-
+            shaderProgram.SetUniform(ambientColorLocation, m_ambientColor);
+            shaderProgram.SetUniform(lightColorLocation, m_lightColor * m_lightIntensity);
+            shaderProgram.SetUniform(lightPositionLocation, m_lightPosition);
+            shaderProgram.SetUniform(cameraPositionLocation, m_cameraPosition);
+            shaderProgram.SetUniform(specularExponentLocation, m_specularExponent);
             // (todo) 05.X: Set camera and light uniforms
 
 
@@ -101,6 +124,29 @@ void ViewerApplication::InitializeModel()
     m_model = loader.Load("models/mill/Mill.obj");
 
     // (todo) 05.1: Load and set textures
+    Texture2DLoader loader2d(TextureObject::FormatRGB, TextureObject::InternalFormatRGB8);
+    loader2d.SetFlipVertical(true);
+
+    loader.SetCreateMaterials(true);
+
+    for (int i = 1; i <= m_model.GetMaterialCount(); i++)
+    {
+        Material& m = m_model.GetMaterial(i - 1);
+        m.SetUniformValue(m.GetUniformLocation("Color"), glm::vec4(1.0f / i, 1.0f / i, 1.0f / i, 1.0f));
+
+        if(i == 1)
+            m.SetUniformValue(m.GetUniformLocation("ColorTexture0"),
+                std::make_shared<Texture2DObject>(loader2d.Load("models/mill/1.jpg")));
+        else if (i == 2)
+            m.SetUniformValue(m.GetUniformLocation("ColorTexture0"),
+                std::make_shared<Texture2DObject>(loader2d.Load("models/mill/2.jpg")));
+        else
+            m.SetUniformValue(m.GetUniformLocation("ColorTexture0"),
+                std::make_shared<Texture2DObject>(loader2d.Load("models/mill/3.jpg")));
+
+        m_model.SetMaterial(i - 1, std::make_shared<Material>(m));
+    }
+
 
 }
 
@@ -125,6 +171,11 @@ void ViewerApplication::RenderGUI()
     m_imGui.BeginFrame();
 
     // (todo) 05.4: Add debug controls for light properties
+    ImGui::DragFloat("Light intensity", &m_lightIntensity);
+    ImGui::SliderFloat3("Light position", (float*)& m_lightPosition, -5000, 5000);
+    ImGui::ColorEdit3("Light color", (float*)&m_lightColor);
+    ImGui::DragFloat("Specular exponent", (float*)&m_specularExponent);
+
 
     m_imGui.EndFrame();
 }
