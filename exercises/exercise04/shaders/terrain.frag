@@ -9,13 +9,13 @@ out vec4 FragColor;
 
 uniform vec4 Color;
 
-uniform sampler2D ColorTexture0;
-uniform vec2 ColorTexture01Range;
-uniform sampler2D ColorTexture1;
-uniform vec2 ColorTexture12Range;
-uniform sampler2D ColorTexture2;
-uniform vec2 ColorTexture23Range;
-uniform sampler2D ColorTexture3;
+uniform sampler2D GrassTexture;
+uniform vec2 DirtTextureRange;
+uniform sampler2D DirtTexture;
+uniform vec2 RockTextureRange;
+uniform sampler2D RockTexture;
+uniform vec2 SnowTextureRange;
+uniform sampler2D SnowTexture;
 
 uniform vec2 ColorTextureScale;
 
@@ -26,19 +26,16 @@ float inverseMix(vec2 range, float value)
 
 void main()
 {
-//	vec4 color0 = texture(ColorTexture0, TexCoord * ColorTextureScale);
-//	vec4 color1 = texture(ColorTexture1, TexCoord * ColorTextureScale);
-//	vec4 color2 = texture(ColorTexture2, TexCoord * ColorTextureScale);
-//	vec4 color3 = texture(ColorTexture3, TexCoord * ColorTextureScale);
-//
-//	vec4 color = color0;
-//	color = mix(color, color1, inverseMix(ColorTexture01Range, Height));
-//	color = mix(color, color2, inverseMix(ColorTexture12Range, Height));
-//	color = mix(color, color3, inverseMix(ColorTexture23Range, Height));
-//
-//	//FragColor = Color * color;
-//	FragColor = vec4(1.0f);
+	vec4 color0 = texture(GrassTexture, TexCoord * ColorTextureScale);
+	vec4 color1 = texture(DirtTexture, TexCoord * ColorTextureScale);
+	vec4 color2 = texture(RockTexture, TexCoord * ColorTextureScale);
+	vec4 color3 = texture(SnowTexture, TexCoord * ColorTextureScale);
 
-	vec4 color = texture(ColorTexture0, TexCoord * ColorTextureScale);
-	FragColor = color;
+	vec4 color = color0;
+
+	color = mix(color, color1, inverseMix(DirtTextureRange, Height));
+	color = mix(color, color2, inverseMix(RockTextureRange, Height));
+	color = mix(color, color3, inverseMix(SnowTextureRange, Height));
+
+	FragColor = Color * color;
 }
