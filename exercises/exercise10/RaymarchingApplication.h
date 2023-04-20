@@ -40,4 +40,6 @@ private:
 
     // Materials
     std::shared_ptr<Material> m_material;
+
+    glm::mat4 m_boxMatrix = glm::mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 2, 0, -10, 1);
 };

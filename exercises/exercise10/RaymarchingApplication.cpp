@@ -10,6 +10,7 @@
 #include <imgui.h>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 RaymarchingApplication::RaymarchingApplication()
     : Application(1024, 1024, "Ray-marching demo")
@@ -43,6 +44,8 @@ void RaymarchingApplication::Update()
     // Update the material properties
     m_material->SetUniformValue("ProjMatrix", camera.GetProjectionMatrix());
     m_material->SetUniformValue("InvProjMatrix", glm::inverse(camera.GetProjectionMatrix()));
+
+    
 }
 
 void RaymarchingApplication::Render()
@@ -86,6 +89,16 @@ void RaymarchingApplication::InitializeMaterial()
     m_material = CreateRaymarchingMaterial("shaders/exercise10.glsl");
 
     // (todo) 10.X: Initialize material uniforms
+    m_material->SetUniformValue("SphereColor", glm::vec3(0, 0, 1));
+    m_material->SetUniformValue("SphereCenter", glm::vec3(-2, 0, -10));
+    m_material->SetUniformValue("SphereRadius", 1.25f);
+
+    m_material->SetUniformValue("BoxColor", glm::vec3(1, 0, 0));
+    m_material->SetUniformValue("BoxMatrix", m_boxMatrix);
+    m_material->SetUniformValue("BoxSize", glm::vec3(1));
+
+    m_material->SetUniformValue("SmoothUnionValue", 1.0f);
+
 }
 
 void RaymarchingApplication::InitializeRenderer()
@@ -132,7 +145,11 @@ void RaymarchingApplication::RenderGUI()
 
         if (ImGui::TreeNodeEx("Sphere", ImGuiTreeNodeFlags_DefaultOpen))
         {
-            // (todo) 10.1: Add controls for sphere parameters
+            // (todo) 10.1: Add controls for sphere parameters            
+            ImGui::ColorEdit3("Sphere Color", m_material->GetDataUniformPointer<float>("SphereColor"));
+            ImGui::DragFloat3("Sphere Center", m_material->GetDataUniformPointer<float>("SphereCenter"), 0.1f);
+            ImGui::DragFloat("Sphere Radius", m_material->GetDataUniformPointer<float>("SphereRadius"), 0.1f, 0.0f);
+
 
             ImGui::TreePop();
         }
@@ -142,8 +159,27 @@ void RaymarchingApplication::RenderGUI()
             static glm::vec3 rotation(0.0f);
 
             // (todo) 10.1: Add controls for box parameters
+            ImGui::ColorEdit3("Box Color", m_material->GetDataUniformPointer<float>("BoxColor"));
+            ImGui::DragFloat3("Box Size", m_material->GetDataUniformPointer<float>("BoxSize"), 0.1f);
+            ImGui::DragFloat3("Translation", glm::value_ptr(translation), 0.1f);
+            ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 0.1f);
+
+            const Camera& camera = *m_cameraController.GetCamera()->GetCamera();
+
+            m_material->SetUniformValue("BoxMatrix", m_boxMatrix * glm::translate(translation) * 
+                glm::rotate(rotation.x , glm::vec3(1, 0, 0)) *
+                glm::rotate(rotation.y, glm::vec3(0, 1, 0)) *
+                glm::rotate(rotation.z, glm::vec3(0, 0, 1)) *
+                camera.GetViewMatrix()
+            );
 
             ImGui::TreePop();
+        }
+        if (ImGui::TreeNodeEx("General", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::DragFloat("Smooth Union", m_material->GetDataUniformPointer<float>("SmoothUnionValue"), 0.1f, 0.0f);
+            ImGui::TreePop();
+
         }
     }
 
